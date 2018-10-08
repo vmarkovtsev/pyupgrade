@@ -1040,3 +1040,10 @@ def test_py36_plus_fstrings(tmpdir):
     assert f.read() == '"{} {}".format(hello, world)'
     assert main((f.strpath, '--py36-plus')) == 1
     assert f.read() == 'f"{hello} {world}"'
+
+
+def test_no_percent(tmpdir):
+    f = tmpdir.join('f.py')
+    f.write('"%s %s" % (hello, world)')
+    assert main((f.strpath, '--no-percent')) == 0
+    assert f.read() == '"%s %s" % (hello, world)'
