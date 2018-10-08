@@ -1045,5 +1045,5 @@ def test_py36_plus_fstrings(tmpdir):
 def test_no_percent(tmpdir):
     f = tmpdir.join('f.py')
     f.write('"%s %s" % (hello, world)')
-    assert main((f.strpath, '--no-percent')) == 0
+    assert main((f.strpath, '--keep-percent-format')) == 0
     assert f.read() == '"%s %s" % (hello, world)'
