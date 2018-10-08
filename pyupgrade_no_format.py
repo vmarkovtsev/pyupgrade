@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import argparse
 import ast
 import collections
@@ -9,13 +6,8 @@ import io
 import re
 import string
 
-from tokenize_rt import ESCAPED_NL
-from tokenize_rt import Offset
-from tokenize_rt import reversed_enumerate
-from tokenize_rt import src_to_tokens
-from tokenize_rt import Token
-from tokenize_rt import tokens_to_src
-from tokenize_rt import UNIMPORTANT_WS
+from tokenize_rt import ESCAPED_NL, Offset, reversed_enumerate, src_to_tokens, Token, \
+    tokens_to_src, UNIMPORTANT_WS
 
 
 _stdlib_parse_format = string.Formatter().parse
@@ -27,9 +19,8 @@ def parse_format(s):
     """
     parsed = tuple(_stdlib_parse_format(s))
     if not parsed:
-        return ((s, None, None, None),)
-    else:
-        return parsed
+        return (s, None, None, None),
+    return parsed
 
 
 def unparse_parsed_string(parsed):
@@ -38,21 +29,21 @@ def unparse_parsed_string(parsed):
 
     def _convert_tup(tup):
         ret, field_name, format_spec, conversion = tup
-        ret = ret.replace(stype('{'), stype('{{'))
-        ret = ret.replace(stype('}'), stype('}}'))
+        ret = ret.replace(stype("{"), stype("{{"))
+        ret = ret.replace(stype("}"), stype("}}"))
         if field_name is not None:
-            ret += stype('{') + field_name
+            ret += stype("{") + field_name
             if conversion:
-                ret += stype('!') + conversion
+                ret += stype("!") + conversion
             if format_spec:
-                ret += stype(':') + format_spec
-            ret += stype('}')
+                ret += stype(":") + format_spec
+            ret += stype("}")
         return ret
 
     return j.join(_convert_tup(tup) for tup in parsed)
 
 
-NON_CODING_TOKENS = frozenset(('COMMENT', ESCAPED_NL, 'NL', UNIMPORTANT_WS))
+NON_CODING_TOKENS = frozenset(("COMMENT", ESCAPED_NL, "NL", UNIMPORTANT_WS))
 
 
 def _ast_to_offset(node):
@@ -60,7 +51,7 @@ def _ast_to_offset(node):
 
 
 def ast_parse(contents_text):
-    return ast.parse(contents_text.encode('UTF-8'))
+    return ast.parse(contents_text.encode("UTF-8"))
 
 
 def inty(s):
@@ -75,7 +66,7 @@ def _rewrite_string_literal(literal):
     try:
         parsed_fmt = parse_format(literal)
     except ValueError:
-        # Wellp, the format literal was malformed, so skip it
+        # Well, the format literal was malformed, so skip it
         return literal
 
     last_int = -1
@@ -91,7 +82,7 @@ def _rewrite_string_literal(literal):
         if tup[1] is None:
             return tup
         else:
-            return (tup[0], '', tup[2], tup[3])
+            return tup[0], "", tup[2], tup[3]
 
     removed = [_remove_fmt(tup) for tup in parsed_fmt]
     return unparse_parsed_string(removed)
@@ -106,14 +97,14 @@ def _fix_format_literals(contents_text):
     seen_dot = False
 
     for i, token in enumerate(tokens):
-        if string_start is None and token.name == 'STRING':
+        if string_start is None and token.name == "STRING":
             string_start = i
             string_end = i + 1
-        elif string_start is not None and token.name == 'STRING':
+        elif string_start is not None and token.name == "STRING":
             string_end = i + 1
-        elif string_start is not None and token.src == '.':
+        elif string_start is not None and token.src == ".":
             seen_dot = True
-        elif seen_dot and token.src == 'format':
+        elif seen_dot and token.src == "format":
             to_replace.append((string_start, string_end))
             string_start, string_end, seen_dot = None, None, False
         elif token.name not in NON_CODING_TOKENS:
@@ -128,10 +119,10 @@ def _fix_format_literals(contents_text):
 
 
 def _has_kwargs(call):
-    return bool(call.keywords) or bool(getattr(call, 'kwargs', None))
+    return bool(call.keywords) or bool(getattr(call, "kwargs", None))
 
 
-BRACES = {'(': ')', '[': ']', '{': '}'}
+BRACES = {"(": ")", "[": "]", "{": "}"}
 SET_TRANSFORM = (ast.List, ast.ListComp, ast.GeneratorExp, ast.Tuple)
 
 
@@ -143,7 +134,7 @@ class FindSetsVisitor(ast.NodeVisitor):
     def visit_Call(self, node):
         if (
                 isinstance(node.func, ast.Name) and
-                node.func.id == 'set' and
+                node.func.id == "set" and
                 len(node.args) == 1 and
                 not _has_kwargs(node) and
                 isinstance(node.args[0], SET_TRANSFORM)
@@ -162,15 +153,15 @@ class FindSetsVisitor(ast.NodeVisitor):
 
 
 def _is_wtf(func, tokens, i):
-    return tokens[i].src != func or tokens[i + 1].src != '('
+    return tokens[i].src != func or tokens[i + 1].src != "("
 
 
 def _process_set_empty_literal(tokens, start):
-    if _is_wtf('set', tokens, start):
+    if _is_wtf("set", tokens, start):
         return
 
     i = start + 2
-    brace_stack = ['(']
+    brace_stack = ["("]
     while brace_stack:
         token = tokens[i].src
         if token == BRACES[brace_stack[-1]]:
@@ -203,7 +194,7 @@ def _adjust_arg(tokens, i, arg):
         # list element.
         while not _is_arg(tokens[i], arg):
             i += 1
-        while tokens[i].src != '(':
+        while tokens[i].src != "(":
             i += 1
         arg = copy.copy(arg.elts[0])
         arg.lineno = tokens[i].line
@@ -212,7 +203,7 @@ def _adjust_arg(tokens, i, arg):
 
 
 Victims = collections.namedtuple(
-    'Victims', ('starts', 'ends', 'first_comma_index', 'arg_index'),
+    "Victims", ("starts", "ends", "first_comma_index", "arg_index"),
 )
 
 
@@ -247,16 +238,16 @@ def _victims(tokens, start, arg, gen):
             starts.append(i)
 
         if (
-                token == ',' and
+                token == "," and
                 len(brace_stack) == arg_depth and
                 first_comma_index is None
         ):
             first_comma_index = i
 
         if is_end_brace and len(brace_stack) in start_depths:
-            if tokens[i - 2].src == ',' and tokens[i - 1].src == ' ':
+            if tokens[i - 2].src == "," and tokens[i - 1].src == " ":
                 ends.extend((i - 2, i - 1, i))
-            elif tokens[i - 1].src == ',':
+            elif tokens[i - 1].src == ",":
                 ends.extend((i - 1, i))
             else:
                 ends.append(i)
@@ -271,7 +262,7 @@ def _victims(tokens, start, arg, gen):
         i -= 2
         while tokens[i].name in NON_CODING_TOKENS:
             i -= 1
-        if tokens[i].src == ',':
+        if tokens[i].src == ",":
             ends = sorted(set(ends + [i]))
 
     return Victims(starts, ends, first_comma_index, arg_index)
@@ -279,10 +270,10 @@ def _victims(tokens, start, arg, gen):
 
 def _is_on_a_line_by_self(tokens, i):
     return (
-        tokens[i - 2].name == 'NL' and
+        tokens[i - 2].name == "NL" and
         tokens[i - 1].name == UNIMPORTANT_WS and
         tokens[i - 1].src.isspace() and
-        tokens[i + 1].name == 'NL'
+        tokens[i + 1].name == "NL"
     )
 
 
@@ -294,7 +285,7 @@ def _remove_brace(tokens, i):
 
 
 def _process_set_literal(tokens, start, arg):
-    if _is_wtf('set', tokens, start):
+    if _is_wtf("set", tokens, start):
         return
 
     gen = isinstance(arg, ast.GeneratorExp)
@@ -303,10 +294,10 @@ def _process_set_literal(tokens, start, arg):
     del set_victims.starts[0]
     end_index = set_victims.ends.pop()
 
-    tokens[end_index] = Token('OP', '}')
+    tokens[end_index] = Token("OP", "}")
     for index in reversed(set_victims.starts + set_victims.ends):
         _remove_brace(tokens, index)
-    tokens[start:start + 2] = [Token('OP', '{')]
+    tokens[start:start + 2] = [Token("OP", "{")]
 
 
 def _fix_sets(contents_text):
@@ -335,7 +326,7 @@ class FindDictsVisitor(ast.NodeVisitor):
     def visit_Call(self, node):
         if (
                 isinstance(node.func, ast.Name) and
-                node.func.id == 'dict' and
+                node.func.id == "dict" and
                 len(node.args) == 1 and
                 not _has_kwargs(node) and
                 isinstance(node.args[0], (ast.ListComp, ast.GeneratorExp)) and
@@ -348,7 +339,7 @@ class FindDictsVisitor(ast.NodeVisitor):
 
 
 def _process_dict_comp(tokens, start, arg):
-    if _is_wtf('dict', tokens, start):
+    if _is_wtf("dict", tokens, start):
         return
 
     dict_victims = _victims(tokens, start + 1, arg, gen=True)
@@ -357,18 +348,18 @@ def _process_dict_comp(tokens, start, arg):
     del dict_victims.starts[0]
     end_index = dict_victims.ends.pop()
 
-    tokens[end_index] = Token('OP', '}')
+    tokens[end_index] = Token("OP", "}")
     for index in reversed(dict_victims.ends):
         _remove_brace(tokens, index)
     # See #6, Fix SyntaxError from rewriting dict((a, b)for a, b in y)
-    if tokens[elt_victims.ends[-1] + 1].src == 'for':
-        tokens.insert(elt_victims.ends[-1] + 1, Token(UNIMPORTANT_WS, ' '))
+    if tokens[elt_victims.ends[-1] + 1].src == "for":
+        tokens.insert(elt_victims.ends[-1] + 1, Token(UNIMPORTANT_WS, " "))
     for index in reversed(elt_victims.ends):
         _remove_brace(tokens, index)
-    tokens[elt_victims.first_comma_index] = Token('OP', ':')
+    tokens[elt_victims.first_comma_index] = Token("OP", ":")
     for index in reversed(dict_victims.starts + elt_victims.starts):
         _remove_brace(tokens, index)
-    tokens[start:start + 2] = [Token('OP', '{')]
+    tokens[start:start + 2] = [Token("OP", "{")]
 
 
 def _fix_dictcomps(contents_text):
@@ -400,11 +391,11 @@ def _imports_unicode_literals(contents_text):
             continue
         elif isinstance(node, ast.ImportFrom):
             if (
-                node.module == '__future__' and
-                any(name.name == 'unicode_literals' for name in node.names)
+                node.module == "__future__" and
+                any(name.name == "unicode_literals" for name in node.names)
             ):
                 return True
-            elif node.module == '__future__':
+            elif node.module == "__future__":
                 continue
             else:
                 return False
@@ -420,292 +411,61 @@ def _fix_unicode_literals(contents_text, py3_plus):
         return contents_text
     tokens = src_to_tokens(contents_text)
     for i, token in enumerate(tokens):
-        if token.name != 'STRING':
+        if token.name != "STRING":
             continue
 
         match = STRING_PREFIXES_RE.match(token.src)
         prefix = match.group(1)
         rest = match.group(2)
-        new_prefix = prefix.replace('u', '').replace('U', '')
-        tokens[i] = Token('STRING', new_prefix + rest)
+        new_prefix = prefix.replace("u", "").replace("U", "")
+        tokens[i] = Token("STRING", new_prefix + rest)
     return tokens_to_src(tokens)
 
 
 def _fix_long_literals(contents_text):
     tokens = src_to_tokens(contents_text)
     for i, token in enumerate(tokens):
-        if token.name == 'NUMBER':
-            tokens[i] = token._replace(src=token.src.rstrip('lL'))
+        if token.name == "NUMBER":
+            tokens[i] = token._replace(src=token.src.rstrip("lL"))
     return tokens_to_src(tokens)
 
 
 def _fix_octal_literals(contents_text):
     def _fix_octal(s):
-        if not s.startswith('0') or not s.isdigit() or s == len(s) * '0':
+        if not s.startswith("0") or not s.isdigit() or s == len(s) * "0":
             return s
         else:  # pragma: no cover (py2 only)
-            return '0o' + s[1:]
+            return "0o" + s[1:]
 
     tokens = src_to_tokens(contents_text)
     for i, token in enumerate(tokens):
-        if token.name == 'NUMBER':
+        if token.name == "NUMBER":
             tokens[i] = token._replace(src=_fix_octal(token.src))
     return tokens_to_src(tokens)
 
 
-MAPPING_KEY_RE = re.compile(r'\(([^()]*)\)')
-CONVERSION_FLAG_RE = re.compile('[#0+ -]*')
-WIDTH_RE = re.compile(r'(?:\*|\d*)')
-PRECISION_RE = re.compile(r'(?:\.(?:\*|\d*))?')
-LENGTH_RE = re.compile('[hlL]?')
-
-
-def parse_percent_format(s):
-    def _parse_inner():
-        string_start = 0
-        string_end = 0
-        in_fmt = False
-
-        i = 0
-        while i < len(s):
-            if not in_fmt:
-                try:
-                    i = s.index('%', i)
-                except ValueError:  # no more % fields!
-                    yield s[string_start:], None
-                    return
-                else:
-                    string_end = i
-                    i += 1
-                    in_fmt = True
-            else:
-                key_match = MAPPING_KEY_RE.match(s, i)
-                if key_match:
-                    key = key_match.group(1)
-                    i = key_match.end()
-                else:
-                    key = None
-
-                conversion_flag_match = CONVERSION_FLAG_RE.match(s, i)
-                conversion_flag = conversion_flag_match.group() or None
-                i = conversion_flag_match.end()
-
-                width_match = WIDTH_RE.match(s, i)
-                width = width_match.group() or None
-                i = width_match.end()
-
-                precision_match = PRECISION_RE.match(s, i)
-                precision = precision_match.group() or None
-                i = precision_match.end()
-
-                # length modifier is ignored
-                i = LENGTH_RE.match(s, i).end()
-
-                conversion = s[i]
-                i += 1
-
-                fmt = (key, conversion_flag, width, precision, conversion)
-                yield s[string_start:string_end], fmt
-
-                in_fmt = False
-                string_start = i
-
-    return tuple(_parse_inner())
-
-
-class FindPercentFormats(ast.NodeVisitor):
-    def __init__(self):
-        self.found = {}
-
-    def visit_BinOp(self, node):
-        if isinstance(node.op, ast.Mod) and isinstance(node.left, ast.Str):
-            for _, fmt in parse_percent_format(node.left.s):
-                if not fmt:
-                    continue
-                key, conversion_flag, width, precision, conversion = fmt
-                # timid: these require out-of-order parameter consumption
-                if width == '*' or precision == '.*':
-                    break
-                # timid: these conversions require modification of parameters
-                if conversion in {'d', 'i', 'u', 'c'}:
-                    break
-                # timid: py2: %#o formats different from {:#o} (TODO: --py3)
-                if '#' in (conversion_flag or '') and conversion == 'o':
-                    break
-                # timid: no equivalent in format
-                if key == '':
-                    break
-                # timid: py2: conversion is subject to modifiers (TODO: --py3)
-                nontrivial_fmt = any((conversion_flag, width, precision))
-                if conversion == '%' and nontrivial_fmt:
-                    break
-                # timid: no equivalent in format
-                if conversion in {'a', 'r'} and nontrivial_fmt:
-                    break
-                # all dict substitutions must be named
-                if isinstance(node.right, ast.Dict) and not key:
-                    break
-            else:
-                self.found[_ast_to_offset(node)] = node
-        self.generic_visit(node)
-
-
-def _simplify_conversion_flag(flag):
-    parts = []
-    for c in flag:
-        if c in parts:
-            continue
-        c = c.replace('-', '<')
-        parts.append(c)
-        if c == '<' and '0' in parts:
-            parts.remove('0')
-        elif c == '+' and ' ' in parts:
-            parts.remove(' ')
-    return ''.join(parts)
-
-
-def _percent_to_format(s):
-    def _handle_part(part):
-        s, fmt = part
-        s = s.replace('{', '{{').replace('}', '}}')
-        if fmt is None:
-            return s
-        else:
-            key, conversion_flag, width, precision, conversion = fmt
-            if conversion == '%':
-                return s + '%'
-            parts = [s, '{']
-            if conversion == 's':
-                conversion = None
-            if key:
-                parts.append(key)
-            if conversion in {'r', 'a'}:
-                converter = '!{}'.format(conversion)
-                conversion = ''
-            else:
-                converter = ''
-            if any((conversion_flag, width, precision, conversion)):
-                parts.append(':')
-            if conversion_flag:
-                parts.append(_simplify_conversion_flag(conversion_flag))
-            parts.extend(x for x in (width, precision, conversion) if x)
-            parts.extend(converter)
-            parts.append('}')
-            return ''.join(parts)
-
-    return ''.join(_handle_part(part) for part in parse_percent_format(s))
+MAPPING_KEY_RE = re.compile(r"\(([^()]*)\)")
+CONVERSION_FLAG_RE = re.compile("[#0+ -]*")
+WIDTH_RE = re.compile(r"(?:\*|\d*)")
+PRECISION_RE = re.compile(r"(?:\.(?:\*|\d*))?")
+LENGTH_RE = re.compile("[hlL]?")
 
 
 def _is_bytestring(s):
     for c in s:
-        if c in '"\'':
+        if c in "\"'":
             return False
-        elif c.lower() == 'b':
+        elif c.lower() == "b":
             return True
     else:
         return False
 
 
-def _fix_percent_format_tuple(tokens, start, node):
-    # TODO: this is overly timid
-    paren = start + 4
-    if tokens_to_src(tokens[start + 1:paren + 1]) != ' % (':
-        return
-
-    victims = _victims(tokens, paren, node.right, gen=False)
-    victims.ends.pop()
-
-    for index in reversed(victims.starts + victims.ends):
-        _remove_brace(tokens, index)
-
-    newsrc = _percent_to_format(tokens[start].src)
-    tokens[start] = tokens[start]._replace(src=newsrc)
-    tokens[start + 1:paren] = [Token('Format', '.format'), Token('OP', '(')]
-
-
-IDENT_RE = re.compile('^[a-zA-Z_][a-zA-Z0-9_]*$')
-
-
-def _fix_percent_format_dict(tokens, start, node):
-    seen_keys = set()
-    keys = {}
-    for k in node.right.keys:
-        # not a string key
-        if not isinstance(k, ast.Str):
-            return
-        # duplicate key
-        elif k.s in seen_keys:
-            return
-        # not an identifier
-        elif not IDENT_RE.match(k.s):
-            return
-        seen_keys.add(k.s)
-        keys[_ast_to_offset(k)] = k
-
-    # TODO: this is overly timid
-    brace = start + 4
-    if tokens_to_src(tokens[start + 1:brace + 1]) != ' % {':
-        return
-
-    victims = _victims(tokens, brace, node.right, gen=False)
-    brace_end = victims.ends.pop()
-
-    key_indices = []
-    for i, token in enumerate(tokens[brace:brace_end], brace):
-        k = keys.pop(token.offset, None)
-        if k is None:
-            continue
-        # we found the key, but the string didn't match (implicit join?)
-        elif ast.literal_eval(token.src) != k.s:
-            return
-        # the map uses some strange syntax that's not `'k': v`
-        elif tokens_to_src(tokens[i + 1:i + 3]) != ': ':
-            return
-        else:
-            key_indices.append((i, k.s))
-    assert not keys, keys
-
-    tokens[brace_end] = tokens[brace_end]._replace(src=')')
-    for (key_index, s) in reversed(key_indices):
-        tokens[key_index:key_index + 3] = [Token('CODE', '{}='.format(s))]
-    for index in reversed(victims.starts + victims.ends):
-        _remove_brace(tokens, index)
-    newsrc = _percent_to_format(tokens[start].src)
-    tokens[start] = tokens[start]._replace(src=newsrc)
-    tokens[start + 1:brace] = [Token('Format', '.format'), Token('OP', '(')]
-
-
-def _fix_percent_format(contents_text):
-    try:
-        ast_obj = ast_parse(contents_text)
-    except SyntaxError:
-        return contents_text
-
-    visitor = FindPercentFormats()
-    visitor.visit(ast_obj)
-
-    tokens = src_to_tokens(contents_text)
-
-    for i, token in reversed_enumerate(tokens):
-        node = visitor.found.get(token.offset)
-        if node is None:
-            continue
-
-        # no .format() equivalent for bytestrings in py3
-        # note that this code is only necessary when running in python2
-        if _is_bytestring(tokens[i].src):  # pragma: no cover (py2-only)
-            continue
-
-        if isinstance(node.right, ast.Tuple):
-            _fix_percent_format_tuple(tokens, i, node)
-        elif isinstance(node.right, ast.Dict):
-            _fix_percent_format_dict(tokens, i, node)
-
-    return tokens_to_src(tokens)
+IDENT_RE = re.compile("^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 
 # PY2: arguments are `Name`, PY3: arguments are `arg`
-ARGATTR = 'id' if str is bytes else 'arg'
+ARGATTR = "id" if str is bytes else "arg"
 
 
 class FindSuper(ast.NodeVisitor):
@@ -714,7 +474,7 @@ class FindSuper(ast.NodeVisitor):
         def __init__(self, name):
             self.name = name
             self.def_depth = 0
-            self.first_arg_name = ''
+            self.first_arg_name = ""
 
     def __init__(self):
         self.class_info_stack = []
@@ -753,7 +513,7 @@ class FindSuper(ast.NodeVisitor):
                 self.class_info_stack and
                 self.class_info_stack[-1].def_depth == 1 and
                 isinstance(node.func, ast.Name) and
-                node.func.id == 'super' and
+                node.func.id == "super" and
                 len(node.args) == 2 and
                 all(isinstance(arg, ast.Name) for arg in node.args) and
                 node.args[0].id == self.class_info_stack[-1].name and
@@ -779,7 +539,7 @@ def _fix_super(contents_text):
         if not call:
             continue
 
-        while tokens[i].name != 'OP':
+        while tokens[i].name != "OP":
             i += 1
 
         victims = _victims(tokens, i, call, gen=False)
@@ -789,14 +549,14 @@ def _fix_super(contents_text):
 
 
 class FindNewStyleClasses(ast.NodeVisitor):
-    Base = collections.namedtuple('Base', ('node', 'index'))
+    Base = collections.namedtuple("Base", ("node", "index"))
 
     def __init__(self):
         self.found = {}
 
     def visit_ClassDef(self, node):
         for i, base in enumerate(node.bases):
-            if isinstance(base, ast.Name) and base.id == 'object':
+            if isinstance(base, ast.Name) and base.id == "object":
                 self.found[_ast_to_offset(base)] = self.Base(node, i)
         self.generic_visit(node)
 
@@ -820,21 +580,21 @@ def _fix_new_style_classes(contents_text):
         # backward to find the matching (
         if (
                 len(base.node.bases) == 1 and
-                not getattr(base.node, 'keywords', None)
+                not getattr(base.node, "keywords", None)
         ):
             j = i
-            while tokens[j].src != ':':
+            while tokens[j].src != ":":
                 j += 1
-            while tokens[j].src != ')':
+            while tokens[j].src != ")":
                 j -= 1
 
             end_index = j
-            brace_stack = [')']
+            brace_stack = [")"]
             while brace_stack:
                 j -= 1
-                if tokens[j].src == ')':
-                    brace_stack.append(')')
-                elif tokens[j].src == '(':
+                if tokens[j].src == ")":
+                    brace_stack.append(")")
+                elif tokens[j].src == "(":
                     brace_stack.pop()
             start_index = j
 
@@ -843,16 +603,16 @@ def _fix_new_style_classes(contents_text):
         elif base.index == 0:
             j = i
             brace_stack = []
-            while tokens[j].src != ',':
-                if tokens[j].src == ')':
-                    brace_stack.append(')')
+            while tokens[j].src != ",":
+                if tokens[j].src == ")":
+                    brace_stack.append(")")
                 j += 1
             end_index = j
 
             j = i
             while brace_stack:
                 j -= 1
-                if tokens[j].src == '(':
+                if tokens[j].src == "(":
                     brace_stack.pop()
             start_index = j
 
@@ -863,8 +623,8 @@ def _fix_new_style_classes(contents_text):
             # if it is on its own line, remove it
             if (
                     tokens[start_index - 1].name == UNIMPORTANT_WS and
-                    tokens[start_index - 2].name == 'NL' and
-                    tokens[end_index + 1].name == 'NL'
+                    tokens[start_index - 2].name == "NL" and
+                    tokens[end_index + 1].name == "NL"
             ):
                 start_index -= 1
                 end_index += 1
@@ -874,16 +634,16 @@ def _fix_new_style_classes(contents_text):
         else:
             j = i
             brace_stack = []
-            while tokens[j].src != ',':
-                if tokens[j].src == '(':
-                    brace_stack.append('(')
+            while tokens[j].src != ",":
+                if tokens[j].src == "(":
+                    brace_stack.append("(")
                 j -= 1
             start_index = j
 
             j = i
             while brace_stack:
                 j += 1
-                if tokens[j].src == ')':
+                if tokens[j].src == ")":
                     brace_stack.pop()
             end_index = j
 
@@ -892,20 +652,20 @@ def _fix_new_style_classes(contents_text):
 
 
 SIX_SIMPLE_ATTRS = {
-    'text_type': 'str',
-    'binary_type': 'bytes',
-    'class_types': '(type,)',
-    'string_types': '(str,)',
-    'integer_types': '(int,)',
-    'unichr': 'chr',
-    'iterbytes': 'iter',
-    'print_': 'print',
-    'exec_': 'exec',
-    'advance_iterator': 'next',
-    'next': 'next',
-    'callable': 'callable',
+    "text_type": "str",
+    "binary_type": "bytes",
+    "class_types": "(type,)",
+    "string_types": "(str,)",
+    "integer_types": "(int,)",
+    "unichr": "chr",
+    "iterbytes": "iter",
+    "print_": "print",
+    "exec_": "exec",
+    "advance_iterator": "next",
+    "next": "next",
+    "callable": "callable",
 }
-SIX_UNICODE_COMPATIBLE = 'python_2_unicode_compatible'
+SIX_UNICODE_COMPATIBLE = "python_2_unicode_compatible"
 
 
 class FindSixUsage(ast.NodeVisitor):
@@ -925,7 +685,7 @@ class FindSixUsage(ast.NodeVisitor):
                     ) or (
                         isinstance(decorator, ast.Attribute) and
                         isinstance(decorator.value, ast.Name) and
-                        decorator.value.id == 'six' and
+                        decorator.value.id == "six" and
                         decorator.attr == SIX_UNICODE_COMPATIBLE
                     )
             ):
@@ -934,7 +694,7 @@ class FindSixUsage(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node):
-        if node.module == 'six':
+        if node.module == "six":
             for name in node.names:
                 if not name.asname:
                     self.six_from_imports.add(name.name)
@@ -951,7 +711,7 @@ class FindSixUsage(ast.NodeVisitor):
     def visit_Attribute(self, node):
         if (
                 isinstance(node.value, ast.Name) and
-                node.value.id == 'six' and
+                node.value.id == "six" and
                 node.attr in SIX_SIMPLE_ATTRS
         ):
             self.simple_attrs[_ast_to_offset(node)] = node
@@ -971,15 +731,15 @@ def _fix_six(contents_text):
     for i, token in reversed_enumerate(tokens):
         if token.offset in visitor.simple_names:
             node = visitor.simple_names[token.offset]
-            tokens[i] = Token('CODE', SIX_SIMPLE_ATTRS[node.id])
+            tokens[i] = Token("CODE", SIX_SIMPLE_ATTRS[node.id])
         elif token.offset in visitor.simple_attrs:
             node = visitor.simple_attrs[token.offset]
-            if tokens[i + 1].src == '.' and tokens[i + 2].src == node.attr:
-                tokens[i:i + 3] = [Token('CODE', SIX_SIMPLE_ATTRS[node.attr])]
+            if tokens[i + 1].src == "." and tokens[i + 2].src == node.attr:
+                tokens[i:i + 3] = [Token("CODE", SIX_SIMPLE_ATTRS[node.attr])]
         elif token.offset in visitor.remove_decorators:
-            if tokens[i - 1].src == '@':
+            if tokens[i - 1].src == "@":
                 end = i + 1
-                while tokens[end].name != 'NEWLINE':
+                while tokens[end].name != "NEWLINE":
                     end += 1
                 del tokens[i - 1:end + 1]
 
@@ -996,11 +756,11 @@ def _simple_arg(arg):
 def _starargs(call):
     return (  # pragma: no branch (starred check uncovered in py2)
         # py2
-        getattr(call, 'starargs', None) or
-        getattr(call, 'kwargs', None) or
+        getattr(call, "starargs", None) or
+        getattr(call, "kwargs", None) or
         any(k.arg is None for k in call.keywords) or (
             # py3
-            getattr(ast, 'Starred', None) and
+            getattr(ast, "Starred", None) and
             any(isinstance(a, ast.Starred) for a in call.args)
         )
     )
@@ -1014,7 +774,7 @@ class FindSimpleFormats(ast.NodeVisitor):
         if (
                 isinstance(node.func, ast.Attribute) and
                 isinstance(node.func.value, ast.Str) and
-                node.func.attr == 'format' and
+                node.func.attr == "format" and
                 all(_simple_arg(arg) for arg in node.args) and
                 all(_simple_arg(k.value) for k in node.keywords) and
                 not _starargs(node)
@@ -1022,10 +782,10 @@ class FindSimpleFormats(ast.NodeVisitor):
             seen = set()
             for _, name, spec, _ in parse_format(node.func.value.s):
                 # timid: difficult to rewrite correctly
-                if spec is not None and '{' in spec:
+                if spec is not None and "{" in spec:
                     break
                 if name is not None:
-                    candidate, _, _ = name.partition('.')
+                    candidate, _, _ = name.partition(".")
                     # timid: could make the f-string longer
                     if candidate and candidate in seen:
                         break
@@ -1040,7 +800,7 @@ def _unparse(node):
     if isinstance(node, ast.Name):
         return node.id
     elif isinstance(node, ast.Attribute):
-        return ''.join((_unparse(node.value), '.', node.attr))
+        return "".join((_unparse(node.value), ".", node.attr))
     else:
         raise NotImplementedError(ast.dump(node))
 
@@ -1054,10 +814,10 @@ def _to_fstring(src, call):
 
     parts = []
     i = 0
-    for s, name, spec, conv in parse_format('f' + src):
+    for s, name, spec, conv in parse_format("f" + src):
         if name is not None:
-            k, dot, rest = name.partition('.')
-            name = ''.join((params[k or str(i)], dot, rest))
+            k, dot, rest = name.partition(".")
+            name = "".join((params[k or str(i)], dot, rest))
             i += 1
         parts.append((s, name, spec, conv))
     return unparse_parsed_string(parts)
@@ -1082,10 +842,10 @@ def _fix_fstrings(contents_text):
             continue
 
         paren = i + 3
-        if tokens_to_src(tokens[i + 1:paren + 1]) != '.format(':
+        if tokens_to_src(tokens[i + 1:paren + 1]) != ".format(":
             continue
 
-        # we don't actually care about arg position, so we pass `node`
+        # we don"t actually care about arg position, so we pass `node`
         victims = _victims(tokens, paren, node, gen=False)
         end = victims.ends[-1]
         # if it spans more than one line, bail
@@ -1099,13 +859,13 @@ def _fix_fstrings(contents_text):
 
 
 def fix_file(filename, args):
-    with open(filename, 'rb') as f:
+    with open(filename, "rb") as f:
         contents_bytes = f.read()
 
     try:
-        contents_text_orig = contents_text = contents_bytes.decode('UTF-8')
+        contents_text_orig = contents_text = contents_bytes.decode("UTF-8")
     except UnicodeDecodeError:
-        print('{} is non-utf-8 (not supported)'.format(filename))
+        print("%s is non-utf-8 (not supported)" % filename)
         return 1
 
     contents_text = _fix_dictcomps(contents_text)
@@ -1114,7 +874,6 @@ def fix_file(filename, args):
     contents_text = _fix_unicode_literals(contents_text, args.py3_plus)
     contents_text = _fix_long_literals(contents_text)
     contents_text = _fix_octal_literals(contents_text)
-    contents_text = _fix_percent_format(contents_text)
     if args.py3_plus:
         contents_text = _fix_super(contents_text)
         contents_text = _fix_new_style_classes(contents_text)
@@ -1123,8 +882,8 @@ def fix_file(filename, args):
         contents_text = _fix_fstrings(contents_text)
 
     if contents_text != contents_text_orig:
-        print('Rewriting {}'.format(filename))
-        with io.open(filename, 'w', encoding='UTF-8', newline='') as f:
+        print("Rewriting " + filename)
+        with io.open(filename, "w", encoding="UTF-8", newline="") as f:
             f.write(contents_text)
         return 1
 
@@ -1132,10 +891,10 @@ def fix_file(filename, args):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser()
-    parser.add_argument('filenames', nargs='*')
-    parser.add_argument('--py3-plus', '--py3-only', action='store_true')
-    parser.add_argument('--py36-plus', action='store_true')
+    parser = argparse.ArgumentParser(description="asottile/pyupgrade fork which does not touch %")
+    parser.add_argument("filenames", nargs="*")
+    parser.add_argument("--py3-plus", "--py3-only", action="store_true")
+    parser.add_argument("--py36-plus", action="store_true")
     args = parser.parse_args(argv)
 
     if args.py36_plus:
@@ -1147,5 +906,5 @@ def main(argv=None):
     return ret
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     exit(main())
