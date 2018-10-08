@@ -6,8 +6,8 @@ import io
 import re
 import string
 
-from tokenize_rt import ESCAPED_NL, Offset, reversed_enumerate, src_to_tokens, Token, \
-    tokens_to_src, UNIMPORTANT_WS
+from tokenize_rt import ESCAPED_NL, Offset, reversed_enumerate, \
+    src_to_tokens, Token, tokens_to_src, UNIMPORTANT_WS
 
 _stdlib_parse_format = string.Formatter().parse
 
@@ -1123,7 +1123,8 @@ def fix_file(filename, args):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='Fork of asottile/pyupgrade with --no-percent')
+    parser = argparse.ArgumentParser(
+        description='Fork of asottile/pyupgrade with --no-percent')
     parser.add_argument('filenames', nargs='*')
     parser.add_argument('--py3-plus', '--py3-only', action='store_true')
     parser.add_argument('--py36-plus', action='store_true')

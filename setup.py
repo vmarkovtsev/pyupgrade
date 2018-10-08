@@ -2,8 +2,9 @@ from setuptools import setup
 
 setup(
     name='pyupgrade-opt',
-    description='A tool to automatically upgrade syntax for newer versions of Python. '
-                'Makes changing % to format() optional - that\'s the killer feature.',
+    description='A tool to automatically upgrade syntax for newer versions '
+                'of Python. Makes changing % to format() optional - that\'s '
+                'the killer feature.',
     url='https://github.com/vmarkovtsev/pyupgrade-opt',
     version='2.7.0',
     author='Anthony Sottile, Vadim Markovtsev',
