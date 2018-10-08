@@ -11,7 +11,8 @@ This is actually a fork of [asottile/pyupgrade](https://github.com/asottile/pyup
 difference is that the other maintainer is less opinionated and accepts changes which would never
 be accepted in the original project. For example, `--no-percent` disables turning `%` string
 formatting into `format()` calls. Upstream changes are manually mirrored from time to time;
-please file an issue if there is a sync lag.
+please file an issue if there is a sync lag. The version is always +1 major, e.g. 2.7.0 corresponds to
+1.7.0 upstream.
 
 ## Installation
 
@@ -26,7 +27,7 @@ Sample `.pre-commit-config.yaml`:
 
 ```yaml
 -   repo: https://github.com/vmarkovtsev/pyupgrade-opt
-    rev: v1.7.0
+    rev: v2.7.0
     hooks:
     -   id: pyupgrade-opt
 ```

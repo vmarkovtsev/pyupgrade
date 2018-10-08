@@ -5,7 +5,7 @@ setup(
     description='A tool to automatically upgrade syntax for newer versions of Python. '
                 'Makes changing % to format() optional - that\'s the killer feature.',
     url='https://github.com/vmarkovtsev/pyupgrade-opt',
-    version='1.7.0',
+    version='2.7.0',
     author='Anthony Sottile, Vadim Markovtsev',
     author_email='asottile@umich.edu, vadim@sourced.tech',
     classifiers=[
