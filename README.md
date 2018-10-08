@@ -28,7 +28,7 @@ Sample `.pre-commit-config.yaml`:
 -   repo: https://github.com/vmarkovtsev/pyupgrade-opt
     rev: v1.7.0
     hooks:
-    -   id: pyupgrade
+    -   id: pyupgrade-opt
 ```
 
 ## Implemented features
